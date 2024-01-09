@@ -10,18 +10,18 @@ def ini_peak_search(ini_scope_data: npt.NDArray[np.float_], min_height:float = 0
     # to avoid get local maximum peaks
     ini_peaks, _ = find_peaks(ini_scope_data,min_height,distance=10)
 
-    # piezo scan voltage set with 4.5V amplitude, at oscilloscope usually have 4 TEM00 peaks. 
-    while True:
-        if len(ini_peaks) > 4:
-            min_height += 0.01
-            ini_peaks, _ = find_peaks(ini_scope_data,min_height,distance=20)
-            # to make sure two peaks we will use are the peaks in the middle, total peaks
-            # number should > 4
-        elif len(ini_peaks) < 4:
-            print("didn't detect enough peaks, check piezo voltage")
-            break
-        else:
-            break
+    # # piezo scan voltage set with 4.5V amplitude, at oscilloscope usually have 4 TEM00 peaks. 
+    # while True:
+    #     if len(ini_peaks) > 4:
+    #         min_height += 0.01
+    #         ini_peaks, _ = find_peaks(ini_scope_data,min_height,distance=20)
+    #         # to make sure two peaks we will use are the peaks in the middle, total peaks
+    #         # number should > 4
+    #     elif len(ini_peaks) < 4:
+    #         print("didn't detect enough peaks, check piezo voltage")
+    #         break
+    #     else:
+    #         break
     
     return ini_peaks
 
@@ -48,9 +48,9 @@ def zero_measure(
     mod_peaks: npt.NDArray[np.float_],
     reso: float
     ):
-    # re-measure the second TEM00 peak's position incase it shifted between two measurements
-    zero_posi_est1 =  ini_peaks[1]  # roughly determine the position of the 0th order peak from the second TEM00 peak
-    zero_posi_est2 =  ini_peaks[2]  # roughly determine the second position of the 0th order peak from the second TEM00 peak
+    # re-measure the first TEM00 peak's position incase it shifted between two measurements
+    zero_posi_est1 =  ini_peaks[0]  # roughly determine the position of the 0th order peak from the first TEM00 peak
+    zero_posi_est2 =  ini_peaks[1]  # roughly determine the second position of the 0th order peak from the second TEM00 peak
     zero_posi_mea1 = find_nearest(mod_peaks, zero_posi_est1) # find the nearest peak position 
     zero_posi_mea2 = find_nearest(mod_peaks, zero_posi_est2) # find the nearest peak position 
     if np.abs(zero_posi_mea1-zero_posi_est1)*reso < 20e6:
@@ -67,7 +67,7 @@ def fir_measure(
     reso: float
     ):
 
-    fir_posi_est = int(mod_fre / reso + ini_peaks[1])  # roughly determine the position of the 1st order peak feom the second TEM00 peak
+    fir_posi_est = int((mod_fre%1e9) / reso + ini_peaks[0])  # roughly determine the position of the 1st order peak feom the second TEM00 peak
     fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
     
     if np.abs(fir_posi_mea-fir_posi_est)*reso > 40e6:
