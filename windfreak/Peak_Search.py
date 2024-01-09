@@ -28,7 +28,7 @@ def ini_peak_search(ini_scope_data: npt.NDArray[np.float_], min_height:float = 0
 def reso_det(ini_peaks: npt.NDArray[np.float_]):
     # determine the frequency resolution of the data (the frequency corrsponding to distance between two poins)
     peaks_dis = np.diff(ini_peaks)
-    FSR_points = peaks_dis[1]
+    FSR_points = peaks_dis[0]
     reso = FSR / FSR_points
     return reso
 
