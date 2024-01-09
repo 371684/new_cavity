@@ -1,6 +1,0 @@
-
-
-influx config create --config-name centrex-cavity  --host-url http://10.10.222.31:8086  --org centrex  --token AX3q-pj-sV7qwQ_Y3eTE3bg8DL5e3a-gTMQk45-HMww1fVpxqy-lqFBG4ZsG7sv2IqLoxHveQQ9769I_5Br6pQ== --active
-
-
-./influx config update   -n centrex-cavity   -u http://localhost:8086   -p centrex:molecules   -o centrex
