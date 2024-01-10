@@ -72,8 +72,8 @@ def fir_measure(
     fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
     
     if np.abs(fir_posi_mea-fir_posi_est)*reso > 40e6:
-        fir_amp = 0
-
+        fir_amp = 0.05
+    # failed to find first order peak
     else:
         fir_amp = mod_scope_data[fir_posi_mea]
     
