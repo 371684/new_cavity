@@ -56,8 +56,9 @@ def zero_measure(
     if np.abs(zero_posi_mea1-zero_posi_est1)*reso < 20e6:
         return zero_posi_mea1,zero_posi_mea2, mod_scope_data[zero_posi_mea1]
     else:
-        zero_amp = 0.05
-        return zero_posi_mea1,zero_posi_mea2, zero_amp
+        #('zeroth peak is too small or has moved')
+        zero_amp = 0
+        return zero_posi_est1,zero_posi_est2, zero_amp
 
 def fir_measure(
     mod_scope_data: npt.NDArray[np.float_],
@@ -71,7 +72,7 @@ def fir_measure(
     fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
     
     if np.abs(fir_posi_mea-fir_posi_est)*reso > 40e6:
-        fir_amp = 0.05
+        fir_amp = 0
 
     else:
         fir_amp = mod_scope_data[fir_posi_mea]
