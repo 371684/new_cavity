@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.signal import find_peaks
 import linien_utils
+import time
 
 FSR = 970e6  # FSR of the cavity is measured to be 970MHz
 MAX_SCAN_RANGE = 2 # 2V scan range
@@ -22,7 +23,7 @@ def reso_det(ini_peaks: np.array()):
     reso = FSR / FSR_points
     return reso
 
-def mod_peak_search(mod_scope_data: np.array(),prominence:float = 0.05):
+def mod_peak_search(mod_scope_data: np.array(), prominence:float = 0.05):
     # search for the peaks whrn turn on the EOM modulaiton signal
     mod_peaks,_ =  find_peaks(mod_scope_data, prominence=prominence, distance=20)
     return mod_peaks
@@ -66,6 +67,7 @@ def fir_measure(
     sweep_center = (-1/2  + fir_posi_mea/len(mod_scope_data)) * MAX_SCAN_RANGE # find the voltage corresponds to 1st order peak
     sweep_amplitude = 20e6/FSR * reso/len(mod_scope_data) * MAX_SCAN_RANGE # scan range 1st order peak +/- 20MHz
     linien_utils.set_scan_range(c, sweep_center, sweep_amplitude)
+    time.sleep(0.1)
     mod_scope_data = linien_utils.get_waveform(c)
     mod_peaks = mod_peak_search(mod_scope_data)
     fir_posi_est = len(mod_scope_data)/2 # expected at center
