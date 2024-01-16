@@ -2,18 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from scipy.signal import find_peaks
-import linien_utils
+from linien_utils import LinienClient, set_scan_range, get_waveform
 import time
 
 FSR = 970e6  # FSR of the cavity is measured to be 970MHz
 MAX_SCAN_RANGE = 2 # 2V scan range
 
-def ini_peak_search(c: linien_utils.LinienClient, threshold:float = 10):
+def ini_peak_search(c: LinienClient, threshold:float = 10):
     # find the peaks with minimium required *prominence* and distance between two peaks
     # to avoid get local maximum peaks or noise 
-    linien_utils.set_scan_range(c, 0, 1)
+    set_scan_range(c, 0, 1)
     time.sleep(0.5)
-    ini_rev_data = linien_utils.get_waveform(c)
+    ini_rev_data = get_waveform(c)
 
     data = np.sort(ini_rev_data)
     height = data[-10]
@@ -33,16 +33,21 @@ def ini_peak_search(c: linien_utils.LinienClient, threshold:float = 10):
         raise RuntimeError("not enough/too many peaks detected")
     return ini_peaks, reso
 
-def mod_peak_search(mod_scope_data):
+def mod_peak_search(c: LinienClient):
+    set_scan_range(c, 0, 1)
     # search for the peaks whrn turn on the EOM modulaiton signal
+    mod_scope_data = get_waveform(c)
     if max(mod_scope_data) > 200:
         mod_peaks,_ =  find_peaks(mod_scope_data, threshold=15,prominence=50, distance=20)
     elif max(mod_scope_data) > 100:
-        mod_peaks,_ =  find_peaks(mod_scope_data, threshold=5,prominence=10, distance=20)
+        mod_peaks, _ =  find_peaks(mod_scope_data, threshold=5,prominence=10, distance=20)
     else:
         mod_peaks,_ =  find_peaks(mod_scope_data, threshold=1,prominence=10, distance=20)
-
-    return mod_peaks
+    # failed to find peak, likely due to redpitaya not yet got the data
+    if len(mod_peaks) == 0:
+        time.sleep(0.1)
+        mod_scope_data, mod_peaks = mod_peak_search(c)
+    return mod_scope_data, mod_peaks
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -69,12 +74,12 @@ def zero_measure(
         return zero_posi_est1, zero_posi_est2, zero_amp
 
 def fir_measure(
-    c: linien_utils.LinienClient,
+    c: LinienClient,
     mod_scope_data,
     ini_peaks,
     mod_peaks, 
     mod_fre: float, 
-    reso: float
+    reso: float,
     ):
 
     fir_posi_est = int((mod_fre%1e9) / reso + ini_peaks[0])  # roughly determine the position of the 1st order peak feom the second TEM00 peak
@@ -86,9 +91,8 @@ def fir_measure(
         plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
         plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
         plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
-
         raise RuntimeError("peak is too far from expected")
-        fir_posi_mea = fir_posi_est
+        # fir_posi_mea = fir_posi_est
         # plt.plot(mod_scope_data)
         # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
         # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
@@ -99,57 +103,24 @@ def fir_measure(
     # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
     # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
     # raise KeyboardInterrupt
-
-    sweep_center = (-1/2  + fir_posi_mea/len(mod_scope_data)) * MAX_SCAN_RANGE # find the voltage corresponds to 1st order peak
-    sweep_amplitude = 0.10
-
-
-
-    # sweep_amplitude = 100e6/reso/len(mod_scope_data) * MAX_SCAN_RANGE # scan range 1st order peak +/- 20MHz
-    # fix bug in linien scanning range
-    sweep_center = sweep_center #- 0.17
-
-    linien_utils.set_scan_range(c, sweep_center, sweep_amplitude)
-    time.sleep(1)
-    mod_scope_data_new = linien_utils.get_waveform(c)
-    mod_peaks = mod_peak_search(mod_scope_data_new)
-
-    i=-0.15
-    for _ in range(0,2):
-        time.sleep(1)
-        mod_scope_data_new = linien_utils.get_waveform(c)
-        if len(mod_peaks) != 0:
-            break
-    while len(mod_peaks) == 0: 
-        linien_utils.set_scan_range(c, sweep_center+i, sweep_amplitude)
-        time.sleep(1)
-        mod_scope_data_new = linien_utils.get_waveform(c)
-        mod_peaks = mod_peak_search(mod_scope_data_new)
-        if len(mod_peaks) != 0:
-            break
-        i=i+0.05
-        if i > 0.15:
-            return 0
-            # plt.plot(mod_scope_data_new)
-            # plt.plot(mod_peaks, mod_scope_data_new[mod_peaks], "x")
-            # plt.plot(fir_posi_mea, mod_scope_data_new[fir_posi_mea], "o", color='red')
-            # raise RuntimeError("failed to find peaks")
-   
-    fir_posi_mea = np.where(mod_scope_data_new==max(mod_scope_data_new[mod_peaks]))
-    fir_posi_mea = fir_posi_mea[0]
-    
-    linien_utils.set_scan_range(c, 0, 1) # restore
-
-    # if np.abs(fir_posi_mea-fir_posi_est)*reso > 40e6:
-    #     # failed to find first order peak
-    #     fir_amp = 0   
-    # else:
-    #     pass
+    sweep_amplitude = 0.5
+    sweep_center = 0
+    max_scan_range = MAX_SCAN_RANGE
+    while max_scan_range > 0.1:
+        sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
+        set_scan_range(c, sweep_center, sweep_amplitude)    
+        mod_scope_data_new, mod_peaks_new = mod_peak_search(c)
+        fir_posi_est = len(mod_scope_data_new)/2 
+        fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) 
+        MAX_SCAN_RANGE = sweep_amplitude
+        sweep_amplitude = sweep_amplitude / 2
+    fir_posi_est = len(mod_scope_data_new) / 2
+    fir_posi_mea = find_nearest(mod_peaks_new, fir_posi_est)
     fir_amp = mod_scope_data_new[fir_posi_mea]
     
     # plt.plot(mod_scope_data_new)
     # plt.plot(mod_peaks, mod_scope_data_new[mod_peaks], "x")
     # plt.plot(fir_posi_mea, mod_scope_data_new[fir_posi_mea], "o", color='red')
     # raise KeyboardInterrupt
-    return fir_posi_mea, fir_amp[0]
+    return fir_posi_mea, fir_amp
 
