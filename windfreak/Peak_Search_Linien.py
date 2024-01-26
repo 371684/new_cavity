@@ -49,7 +49,7 @@ def mod_peak_search(c: LinienClient, first_search = False):
     mod_scope_data = np.array([0])
     while len(mod_peaks) == 0:  # failed to find peak, likely due to redpitaya not yet got the data
         time.sleep(0.1)
-        if first_search == False:
+        if first_search == False: # search for peaks without modulation, so need to find peaks large enough
             mod_scope_data = get_waveform(c)
             if max(mod_scope_data) > 400:
                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=30,prominence=300, distance=10)
@@ -120,19 +120,20 @@ def fir_measure(
     # print(abs(fir_posi_est-fir_posi_mea))
     start = time.time()
     
-    while abs(fir_posi_est-fir_posi_mea) > 100:
+    while abs(fir_posi_est-fir_posi_mea) > 50:
         p=10
         mod_peaks, _ = find_peaks(mod_scope_data, threshold=2,prominence=p, distance=10)
         fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
         end = time.time()
         if end - start > 5:
-            plt.plot(mod_scope_data)
-            plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
-            plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red', markersize=1)
-            plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
-            print(fir_posi_est)
-            print(mod_peaks)
-            raise RuntimeError("peak is too far from expected")
+            fir_posi_mea = fir_posi_est # "peak is too far from expected"
+            # plt.plot(mod_scope_data)
+            # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
+            # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red', markersize=1)
+            # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
+            # print(fir_posi_est)
+            # print(mod_peaks)
+            # raise RuntimeError("peak is too far from expected")
         p=p-1
         # fir_posi_mea = fir_posi_est
         # plt.plot(mod_scope_data)
@@ -145,24 +146,23 @@ def fir_measure(
     # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
     # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
     # raise KeyboardInterrupt
+
     sweep_amplitude = 0.8
     sweep_center = 0
     max_scan_range = 0.8*2
     for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
         max_scan_range = sweep_amplitude*2
         sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
-        # print("sweep_center="+str(sweep_center))
         set_scan_range(c, sweep_center, sweep_amplitude)   
         time.sleep(1)
         mod_scope_data, mod_peaks = mod_peak_search(c)
         if len(mod_peaks) == 0: # peak too small
-            return 0
+            return 0, sweep_center
         if sweep_amplitude > 0.2:
             fir_posi_est = len(mod_scope_data)/2 
             fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) 
         else:
             fir_posi_mea = np.argmax(mod_scope_data)
-        # print("fir_posi_mea="+str(fir_posi_mea)+" len mod_scope_data="+str(len(mod_scope_data)))
     fir_amp = mod_scope_data[fir_posi_mea]
     # fir_amps = []
     # sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
