@@ -150,7 +150,8 @@ def fir_measure(
     sweep_amplitude = 0.8
     sweep_center = 0
     max_scan_range = 0.8*2
-    for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
+    # for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
+    for sweep_amplitude in  [0.25, 0.18, 0.1, 0.08]:
         max_scan_range = sweep_amplitude*2
         sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
         set_scan_range(c, sweep_center, sweep_amplitude)   
