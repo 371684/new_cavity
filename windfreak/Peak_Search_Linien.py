@@ -42,6 +42,41 @@ def ini_peak_search(c: LinienClient, threshold:float = 10):
 
     return ini_peaks, reso
 
+# def mod_peak_search(c: LinienClient, first_search = False):
+#     # search for the peaks whrn turn on the EOM modulaiton signal
+#     start = time.time()
+#     mod_peaks = [] 
+#     mod_scope_data = np.array([0])
+#     while len(mod_peaks) == 0:  # failed to find peak, likely due to redpitaya not yet got the data
+#         time.sleep(0.1)
+#         if first_search == False: # search for peaks without modulation, so need to find peaks large enough
+#             mod_scope_data = get_waveform(c)
+#             if max(mod_scope_data) > 400:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=30,prominence=300, distance=10)
+#             elif max(mod_scope_data) > 150:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=15,prominence=100, distance=10)
+#             else:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
+#             finish = time.time()
+#             if finish - start > 5:
+#                 mod_peaks = []
+#                 break
+#         else:
+#             mod_scope_data = get_waveform(c)
+#             if max(mod_scope_data) > 200:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=20,prominence=50, distance=10)
+#             elif max(mod_scope_data) > 100:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=10,prominence=25, distance=10)
+#             else:
+#                 mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
+#             finish = time.time()
+#             if finish - start > 5:
+#                 mod_peaks = []
+#                 break
+
+
+#     return mod_scope_data, mod_peaks
+
 def mod_peak_search(c: LinienClient, first_search = False):
     # search for the peaks whrn turn on the EOM modulaiton signal
     start = time.time()
@@ -51,24 +86,14 @@ def mod_peak_search(c: LinienClient, first_search = False):
         time.sleep(0.1)
         if first_search == False: # search for peaks without modulation, so need to find peaks large enough
             mod_scope_data = get_waveform(c)
-            if max(mod_scope_data) > 400:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=30,prominence=300, distance=10)
-            elif max(mod_scope_data) > 150:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=15,prominence=100, distance=10)
-            else:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
+            mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
             finish = time.time()
             if finish - start > 5:
                 mod_peaks = []
                 break
         else:
             mod_scope_data = get_waveform(c)
-            if max(mod_scope_data) > 200:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=20,prominence=50, distance=10)
-            elif max(mod_scope_data) > 100:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=10,prominence=25, distance=10)
-            else:
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
+            mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
             finish = time.time()
             if finish - start > 5:
                 mod_peaks = []
@@ -84,6 +109,7 @@ def find_nearest(array, value):
         return array[idx]
     except Exception:
         return 0
+    
 def zero_measure(
     mod_scope_data,
     ini_peaks,
@@ -120,42 +146,43 @@ def fir_measure(
     # print(abs(fir_posi_est-fir_posi_mea))
     start = time.time()
     
-    while abs(fir_posi_est-fir_posi_mea) > 50:
-        p=10
-        mod_peaks, _ = find_peaks(mod_scope_data, threshold=2,prominence=p, distance=10)
-        fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
-        end = time.time()
-        if end - start > 5:
-            fir_posi_mea = fir_posi_est # "peak is too far from expected"
-            # plt.plot(mod_scope_data)
-            # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
-            # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red', markersize=1)
-            # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
-            # print(fir_posi_est)
-            # print(mod_peaks)
-            # raise RuntimeError("peak is too far from expected")
-        p=p-1
-        # fir_posi_mea = fir_posi_est
-        # plt.plot(mod_scope_data)
-        # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
-        # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
-        # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "o")
-        # raise KeyboardInterrupt
-    # plt.plot(mod_scope_data)
-    # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
-    # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
-    # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
-    # raise KeyboardInterrupt
+    # while abs(fir_posi_est-fir_posi_mea) > 50:
+    #     p=10
+    #     mod_peaks, _ = find_peaks(mod_scope_data, threshold=2,prominence=p, distance=10)
+    #     fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
+    #     end = time.time()
+    #     if end - start > 5:
+    #         fir_posi_mea = fir_posi_est # "peak is too far from expected"
+    #         # plt.plot(mod_scope_data)
+    #         # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
+    #         # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red', markersize=1)
+    #         # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
+    #         # print(fir_posi_est)
+    #         # print(mod_peaks)
+    #         # raise RuntimeError("peak is too far from expected")
+    #     p=p-1
+    #     # fir_posi_mea = fir_posi_est
+    #     # plt.plot(mod_scope_data)
+    #     # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
+    #     # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
+    #     # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "o")
+    #     # raise KeyboardInterrupt
+    # # plt.plot(mod_scope_data)
+    # # plt.plot(mod_peaks, mod_scope_data[mod_peaks], "x")
+    # # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
+    # # plt.plot(fir_posi_est, mod_scope_data[fir_posi_est], "8", color='orange')
+    # # raise KeyboardInterrupt
 
     sweep_amplitude = 0.8
     sweep_center = 0
     max_scan_range = 0.8*2
-    # for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
-    for sweep_amplitude in  [0.25, 0.18, 0.1, 0.08]:
-        max_scan_range = sweep_amplitude*2
+    #sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
+    for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
+    #for sweep_amplitude in  [ 0.2, 0.1, 0.08]:
         sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
+        max_scan_range = sweep_amplitude*2
         set_scan_range(c, sweep_center, sweep_amplitude)   
-        time.sleep(1)
+        time.sleep(2)
         mod_scope_data, mod_peaks = mod_peak_search(c)
         if len(mod_peaks) == 0: # peak too small
             return 0, sweep_center
@@ -182,3 +209,19 @@ def fir_measure(
     # plt.plot(fir_posi_mea, mod_scope_data[fir_posi_mea], "o", color='red')
     return fir_amp, sweep_center
 
+def fir_measure_new(
+    mod_scope_data,
+    ini_peaks,
+    mod_peaks, 
+    mod_fre: float, 
+    reso: float,
+    ):
+    # roughly determine the position of the 1st order peak feom the second TEM00 peak
+    # using cavity scanning the peak shifts to lower voltage
+    fir_posi_est = int(-(mod_fre%1e9) / reso + ini_peaks[1])  
+    
+    fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) # find the nearest peak position 
+
+    fir_amp = mod_scope_data[fir_posi_mea]
+
+    return fir_amp, fir_posi_mea
