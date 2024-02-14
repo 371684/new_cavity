@@ -186,7 +186,7 @@ def fir_measure(
         mod_scope_data, mod_peaks = mod_peak_search(c)
         if len(mod_peaks) == 0: # peak too small
             return 0, sweep_center
-        if sweep_amplitude > 0.2:
+        if sweep_amplitude > 0.08:
             fir_posi_est = len(mod_scope_data)/2 
             fir_posi_mea = find_nearest(mod_peaks, fir_posi_est) 
         else:
