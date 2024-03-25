@@ -22,7 +22,7 @@ class LinienDevice():
             user=user,
             password=password
         )
-        self.client.connect()
+        self.client.connect(autostart_server=True, use_parameter_cache=False)
         self.ini_peaks = []
         self.mod_scope_data = []
         self.mod_peaks = []
@@ -102,7 +102,7 @@ class LinienDevice():
             # re-measure the height of this peak by decreasing the piezo scanning range
             sweep_amplitude = 0.8
             max_scan_range = 0.8*2
-            for sweep_amplitude in [0.5, 0.25, 0.18, 0.1]:
+            for sweep_amplitude in [0.6, 0.4, 0.32, 0.25, 0.18, 0.12, 0.12]:
                 self.sweep_center = self.sweep_center + (-1/2  + fir_posi_mea/len(self.mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
                 max_scan_range = sweep_amplitude*2
                 set_scan_range(self.client, self.sweep_center, sweep_amplitude)   
