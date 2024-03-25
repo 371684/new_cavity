@@ -177,12 +177,12 @@ def fir_measure(
     sweep_center = 0
     max_scan_range = 0.8*2
     #sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
-    for sweep_amplitude in [0.5, 0.25, 0.18, 0.1, 0.08]:
+    for sweep_amplitude in [0.5, 0.25, 0.18, 0.1]:
     #for sweep_amplitude in  [ 0.2, 0.1, 0.08]:
         sweep_center = sweep_center + (-1/2  + fir_posi_mea/len(mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
         max_scan_range = sweep_amplitude*2
         set_scan_range(c, sweep_center, sweep_amplitude)   
-        time.sleep(2)
+        time.sleep(0.5)
         mod_scope_data, mod_peaks = mod_peak_search(c)
         if len(mod_peaks) == 0: # peak too small
             return 0, sweep_center
@@ -210,6 +210,7 @@ def fir_measure(
     return fir_amp, sweep_center
 
 def fir_measure_new(
+    c: LinienClient,        
     mod_scope_data,
     ini_peaks,
     mod_peaks, 
