@@ -4,7 +4,7 @@ import numpy.typing as npt
 from scipy.signal import find_peaks
 from linien_utils import LinienClient, set_scan_range, get_waveform
 import time
-
+import logging
 def find_nearest(array, value):
     try:
         array = np.asarray(array)
@@ -59,9 +59,9 @@ class LinienDevice():
         mod_scope_data = np.array([0])
         while len(mod_peaks) == 0:  # failed to find peak, likely due to redpitaya not yet got the data
             time.sleep(0.1)
-            if first_search == False: # search for peaks without modulation, so need to find peaks large enough
+            if first_search == False: # search for peaks large enough
                 mod_scope_data = get_waveform(self.client)
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=3,prominence=10, distance=10)
+                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=20,prominence=50, distance=10)
                 finish = time.time()
                 if finish - start > 5:
                     mod_peaks = []
@@ -102,19 +102,27 @@ class LinienDevice():
             # re-measure the height of this peak by decreasing the piezo scanning range
             sweep_amplitude = 0.8
             max_scan_range = 0.8*2
-            for sweep_amplitude in [0.6, 0.4, 0.32, 0.25, 0.18, 0.12, 0.12]:
+            if mod_fre < 2050 and mod_fre > 1950:
+                sweep_amplitudes = [0.6, 0.5, 0.32, 0.25, 0.18, 0.12, 0.1, 0.08, 0.08]
+            else:
+                sweep_amplitudes = [0.6, 0.5, 0.32, 0.25, 0.25, 0.18, 0.18, 0.12, 0.12]
+            for sweep_amplitude in sweep_amplitudes:
                 self.sweep_center = self.sweep_center + (-1/2  + fir_posi_mea/len(self.mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
                 max_scan_range = sweep_amplitude*2
                 set_scan_range(self.client, self.sweep_center, sweep_amplitude)   
                 time.sleep(0.5)
-                self.mod_peak_search()
+                self.mod_peak_search(first_search=True)
+                # print(self.mod_peaks)
                 if len(self.mod_peaks) == 0: # peak too small
                     self.fir_amp = 0
-                if sweep_amplitude > 0.18:
+                if len(self.mod_peaks) ==3: #main peak plus 2 sidebands
+                    if mod_fre > 2000:
+                        fir_posi_mea = self.mod_peaks[2]
+                    else:
+                        fir_posi_mea = self.mod_peaks[0]
+                else:
                     fir_posi_est = len(self.mod_scope_data)/2 
                     fir_posi_mea = find_nearest(self.mod_peaks, fir_posi_est) 
-                else:
-                    fir_posi_mea = np.argmax(self.mod_scope_data)
             self.fir_amp = self.mod_scope_data[fir_posi_mea]
         else:
             self.mod_peak_search()

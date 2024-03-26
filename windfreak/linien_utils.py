@@ -18,9 +18,10 @@ def get_waveform(c: LinienClient): #averaged over 10
     for _ in range(10):
         time.sleep(1.0/20)
         plot_data = pickle.loads(c.parameters.to_plot.value)
-        waveform = np.array(plot_data['error_signal_1'])
-        waveform = remove_background(waveform)
-        waveform = -1 * waveform
+        wf = np.array(plot_data['error_signal_1'])
+        wf = remove_background(wf)
+        wf = -1 * wf
+        waveform = waveform + wf/10
     return waveform
 
 def set_scan_range(c: LinienClient, sweep_center, sweep_amplitude) -> None:
