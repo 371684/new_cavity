@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-
+import time
 from linien_client.connection import LinienClient
 
 from matplotlib import pyplot as plt
@@ -14,10 +14,15 @@ def remove_background(w): # remove linear background
 
 def get_waveform(c: LinienClient):
     #returns reflection signal while sweeping, length is 2048
-    plot_data = pickle.loads(c.parameters.to_plot.value)
-    waveform = np.array(plot_data['error_signal_1'])
-    waveform = remove_background(waveform)
-    waveform = -1 * waveform
+    wf = []
+    for _ in range(5):
+        time.sleep(0.05)
+        plot_data = pickle.loads(c.parameters.to_plot.value)
+        waveform = np.array(plot_data['error_signal_1'])
+        waveform = remove_background(waveform)
+        waveform = -1 * waveform
+        wf.append(waveform)
+    waveform = np.average(wf, axis=0)
     return waveform
 
 def set_scan_range(c: LinienClient, sweep_center, sweep_amplitude) -> None:

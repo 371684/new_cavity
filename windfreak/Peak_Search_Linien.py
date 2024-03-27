@@ -11,7 +11,7 @@ FSR = 970e6  # FSR of the cavity is measured to be 970MHz
 def ini_peak_search(c: LinienClient, threshold:float = 10):
     # find the peaks with minimium required *prominence* and distance between two peaks
     # to avoid get local maximum peaks or noise 
-    set_scan_range(c, 0, 0.8)
+    set_scan_range(c, -0.15, 0.6)
     time.sleep(1)
     ini_rev_data = get_waveform(c)
 
