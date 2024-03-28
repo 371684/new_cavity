@@ -5,12 +5,13 @@ from linien_client.connection import LinienClient
 import time
 from matplotlib import pyplot as plt
 from time import sleep
-
-def remove_background(w): # remove linear background
+from scipy.signal import savgol_filter as sf
+def remove_background(w): # remove filtered background
     x = np.arange(0,len(w))
+    sf_fit = sf(w, 150, 3)
     poly = np.polyfit(x,w,1)
     poly_y = np.poly1d(poly)(x)
-    return w - poly_y
+    return w - sf_fit
 
 def get_waveform(c: LinienClient): #averaged over 10
     #returns reflection signal while sweeping, length is 2048
