@@ -32,9 +32,9 @@ class LinienDevice():
         self.sweep_center = 0
         self.fir_amp = 0       
         self.reso = 0
+        self.fir_posi_mea = 0
 
-
-    def ini_peak_search(self, threshold:float = 10):
+    def ini_peak_search(self):
         # find the peaks with minimium required *prominence* and distance between two peaks
         # to avoid get local maximum peaks or noise 
         set_scan_range(self.client, 0, 0.6)
@@ -43,10 +43,10 @@ class LinienDevice():
         ini_peaks = []
         while len(ini_peaks) != 2:
             time.sleep(0.1)
-            ini_rev_data = get_waveform(self.client)
-            data = np.sort(ini_rev_data)
+            self.ini_rev_data = get_waveform(self.client)
+            data = np.sort(self.ini_rev_data)
             height = data[-10]
-            ini_peaks, _ = find_peaks(ini_rev_data, height=height, threshold=threshold, prominence=100, distance=500)                           
+            ini_peaks, _ = find_peaks(self.ini_rev_data, height=height, prominence=100, distance=500)                           
         FSR_points = ini_peaks[1] - ini_peaks[0]
         reso = FSR / FSR_points
         self.ini_peaks = ini_peaks
@@ -61,14 +61,14 @@ class LinienDevice():
             time.sleep(0.1)
             if first_search == True: # search for peaks large enough
                 mod_scope_data = get_waveform(self.client)
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=5,prominence=30, distance=10)
+                mod_peaks, _ =  find_peaks(mod_scope_data, height=50, distance=2)
                 finish = time.time()
                 if finish - start > 2:
                     mod_peaks = []
                     break
             else:
                 mod_scope_data = get_waveform(self.client)
-                mod_peaks, _ =  find_peaks(mod_scope_data, threshold=20,prominence=80, distance=10)
+                mod_peaks, _ =  find_peaks(mod_scope_data, height=200, distance=2)
                 break
         self.mod_scope_data = mod_scope_data
         self.mod_peaks = mod_peaks
@@ -79,7 +79,8 @@ class LinienDevice():
         zero_posi_est2 =  self.ini_peaks[1]  # roughly determine the second position of the 0th order peak from the second TEM00 peak
         zero_posi_mea1 = find_nearest(self.mod_peaks, zero_posi_est1) # find the nearest peak position 
         zero_posi_mea2 = find_nearest(self.mod_peaks, zero_posi_est2) # find the nearest peak position 
-        if np.abs(zero_posi_mea1 - zero_posi_est1) * self.reso < 20e6 and np.abs(zero_posi_mea2 - zero_posi_est2) * self.reso < 20e6:
+        if True:
+        # if np.abs(zero_posi_mea1 - zero_posi_est1) * self.reso < 20e6 and np.abs(zero_posi_mea2 - zero_posi_est2) * self.reso < 20e6:
             self.zero_posi_mea1 = zero_posi_mea1
             self.zero_posi_mea2 = zero_posi_mea2
             self.mod_zero_amp = (self.mod_scope_data[zero_posi_mea1] + self.mod_scope_data[zero_posi_mea2])/2
@@ -89,9 +90,9 @@ class LinienDevice():
             self.zero_posi_mea1 = zero_posi_est1
             self.zero_posi_mea2 = zero_posi_est2  
 
-    def fir_measure(self, mod_fre: float, zoom: bool = True):
+    def fir_measure(self, mod_fre: float, zoom: bool = True, init_measure: bool = False):
         if zoom == True:
-            if self.sweep_center == 0:
+            if init_measure:
                 # roughly determine the position of the 1st order peak feom the second TEM00 peak
                 # using cavity scanning the peak shifts to lower voltage
                 fir_posi_est = int(-(mod_fre%1e9) / self.reso + self.ini_peaks[1])  
@@ -105,21 +106,28 @@ class LinienDevice():
                 else:
                     sweep_amplitudes = [0.4, 0.3, 0.25, 0.18, 0.1, 0.08, 0.08]
                 for sweep_amplitude in sweep_amplitudes:
+                    fir_posi_est = len(self.mod_scope_data)/2                     
                     self.sweep_center = self.sweep_center + (-1/2  + fir_posi_mea/len(self.mod_scope_data)) * max_scan_range # find the voltage corresponds to 1st order peak
                     max_scan_range = sweep_amplitude*2
                     set_scan_range(self.client, self.sweep_center, sweep_amplitude)   
-                    time.sleep(1)
+                    time.sleep(0.8)
                     self.mod_peak_search(first_search=True)
-                    # print(self.mod_peaks)
                     if len(self.mod_peaks) == 0: # peak too small
                         self.fir_amp = 0
-                    if len(self.mod_peaks) ==3: # main peak plus 2 sidebands
-                        if mod_fre > 2000:
-                            fir_posi_mea = self.mod_peaks[2]
+                    elif len(self.mod_peaks) > 3: # probably found main peak plus 2 sidebands and some small peaks
+                        mod_peaks_sorted_indices = np.argsort(self.mod_scope_data[self.mod_peaks])
+                        mod_peaks_height = np.sort(self.mod_scope_data[self.mod_peaks]) 
+                        if (mod_peaks_height[-3] - mod_peaks_height[-2]) < 0.3*mod_peaks_height[-2]: # found  found main peak plus 2 sidebands and some small peaks
+                            mod_peaks_sorted_indices = mod_peaks_sorted_indices[-3:]
                         else:
+                            pass # found main peak plus 1 sidebands somehow
+                        self.mod_peaks = np.sort(self.mod_peaks[mod_peaks_sorted_indices])
+                    if len(self.mod_peaks) == 3 and abs(self.mod_scope_data[self.mod_peaks[0]] - self.mod_scope_data[self.mod_peaks[2]]) <self.mod_scope_data[self.mod_peaks[0]] and abs(self.mod_scope_data[self.mod_peaks[0]] - self.mod_scope_data[self.mod_peaks[2]]) < 0.3*self.mod_scope_data[self.mod_peaks[2]] and self.mod_scope_data[self.mod_peaks[1]] > self.mod_scope_data[self.mod_peaks[0]] and self.mod_scope_data[self.mod_peaks[1]] > self.mod_scope_data[self.mod_peaks[2]]: # main peak plus 2 sidebands
+                        if mod_fre > 1995e6:
                             fir_posi_mea = self.mod_peaks[0]
+                        else:
+                            fir_posi_mea = self.mod_peaks[2]
                     else:
-                        fir_posi_est = len(self.mod_scope_data)/2 
                         if len(self.mod_peaks) == 0: # no peaks were found
                             self.fir_amp = 0
                             break
@@ -127,15 +135,22 @@ class LinienDevice():
                         if abs(self.mod_zero_amp - self.mod_scope_data[fir_posi_mea]) < 0.5*self.mod_scope_data[fir_posi_mea]: # found the wrong peak
                             self.mod_peaks = np.delete(self.mod_peaks, np.where(fir_posi_mea))
                             fir_posi_mea = find_nearest(self.mod_peaks, fir_posi_est) 
-                self.fir_amp = self.mod_scope_data[fir_posi_mea]
+                if abs(fir_posi_mea - fir_posi_est) > 200:
+                    # print(f"firamp=0 {fir_posi_mea} {fir_posi_est}")
+                    self.fir_amp = 0
+                else:
+                    self.fir_amp = self.mod_scope_data[fir_posi_mea]
             else:
                 self.mod_peak_search()
                 fir_posi_est = len(self.mod_scope_data)/2 
                 if len(self.mod_peaks) == 0:
-                    self.fir_amp = 0
+                    self.fir_amp = 0                
                 else:
                     fir_posi_mea = find_nearest(self.mod_peaks, fir_posi_est) 
-                    self.fir_amp = self.mod_scope_data[fir_posi_mea]
+                    if abs(fir_posi_mea - fir_posi_est) > 300:
+                        self.fir_amp = 0
+                    else:
+                        self.fir_amp = self.mod_scope_data[fir_posi_mea]
         else:
             self.mod_peak_search()
             fir_posi_est = int(-(mod_fre%1e9) / self.reso + self.ini_peaks[1])                  
