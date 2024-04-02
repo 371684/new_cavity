@@ -46,7 +46,7 @@ class LinienDevice():
             self.ini_rev_data = get_waveform(self.client)
             data = np.sort(self.ini_rev_data)
             height = data[-10]
-            ini_peaks, _ = find_peaks(self.ini_rev_data, height=height, prominence=100, distance=500)                           
+            ini_peaks, _ = find_peaks(self.ini_rev_data, height=height, prominence=25, distance=500)                           
         FSR_points = ini_peaks[1] - ini_peaks[0]
         reso = FSR / FSR_points
         self.ini_peaks = ini_peaks
@@ -61,14 +61,14 @@ class LinienDevice():
             time.sleep(0.1)
             if first_search == True: # search for peaks large enough
                 mod_scope_data = get_waveform(self.client)
-                mod_peaks, _ =  find_peaks(mod_scope_data, height=50, distance=2)
+                mod_peaks, _ =  find_peaks(mod_scope_data, height=15, distance=2)
                 finish = time.time()
                 if finish - start > 2:
                     mod_peaks = []
                     break
             else:
                 mod_scope_data = get_waveform(self.client)
-                mod_peaks, _ =  find_peaks(mod_scope_data, height=200, distance=2)
+                mod_peaks, _ =  find_peaks(mod_scope_data, height=50, distance=2)
                 break
         self.mod_scope_data = mod_scope_data
         self.mod_peaks = mod_peaks
@@ -96,7 +96,6 @@ class LinienDevice():
                 # roughly determine the position of the 1st order peak feom the second TEM00 peak
                 # using cavity scanning the peak shifts to lower voltage
                 fir_posi_est = int(-(mod_fre%1e9) / self.reso + self.ini_peaks[1])  
-                
                 fir_posi_mea = find_nearest(self.mod_peaks, fir_posi_est) # find the nearest peak position 
                 # re-measure the height of this peak by decreasing the piezo scanning range
                 sweep_amplitude = 0.6
